@@ -2,8 +2,8 @@
 const { firebaseAuthSync } = require('../src/firebase.js')
 
 const {
-  Model
-} = require('sequelize');
+  sequelize: { Model },
+} = require("sigue");
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
     /**
