@@ -1,0 +1,31 @@
+{
+  "name": "work-queue-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "env $(cat .env) nodemon index.js",
+    "start-prod": "node ./index.js",
+    "test": "NODE_ENV=test mocha --parallel --full-trace --exit"
+  },
+  "author": "Christopher Jensen",
+  "license": "ISC",
+  "dependencies": {
+    "firebase-admin": "^11.8.0",
+    "graphql-http": "^1.18.0",
+    "graphql-redis-subscriptions": "^2.6.0",
+    "graphql-subscriptions": "^2.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "nanoid": "^3.3.6",
+    "pg": "^8.11.3",
+    "sigue": "github:sec0ndhand/sigue#v/2.0.0",
+    "sqlite3": "^5.1.6",
+    "subscriptions-transport-ws": "^0.11.0"
+  },
+  "devDependencies": {
+    "chai": "^4.3.8",
+    "chai-http": "^4.4.0",
+    "mocha": "^10.2.0",
+    "nodemon": "^3.0.1"
+  }
+}

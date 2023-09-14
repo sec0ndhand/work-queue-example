@@ -1,0 +1,154 @@
+# install docker and run from the folder where this is found the following command:
+# docker-compose up -d
+# uncompress your downloaded backup from dokku, and import using the command below
+# docker exec -i $(docker ps -q -f name=citrus_db_post) env PGPASSWORD=example pg_restore -h localhost -cO --if-exists -d example -U example -w < ./data/export
+
+version: '3.7'
+
+services:
+
+    db_post:
+        image: postgres:13-alpine
+        restart: always
+        ports:
+            - 5432:5432
+        networks:
+            - citrus
+        environment:
+            POSTGRES_PASSWORD: example
+            POSTGRES_USER: example
+            POSTGRES_DB: example
+        volumes:
+            - ./data/postgresql:/var/lib/postgresql/data
+
+    mysql:
+        image: mariadb:10
+        restart: always
+        networks:
+            - citrus
+        ports:
+            - 3306:3306
+        environment:
+            MYSQL_ROOT_PASSWORD: example
+            MYSQL_DATABASE: citrus
+            MYSQL_USER: example
+            MYSQL_PASSWORD: example
+        volumes:
+            - ./data/mysql:/var/lib/mysql
+
+    wordpress:
+        # image: citrus_woo:latest
+        image: wordpress:latest
+        restart: always
+        networks:
+            - citrus
+        environment:
+            - MARIADB_HOST=mysql
+            - MARIADB_PORT_NUMBER=3306
+            - WORDPRESS_DATABASE_USER=example
+            - WORDPRESS_DATABASE_PASSWORD=example
+            - WORDPRESS_DATABASE_NAME=citrus
+        deploy:
+            labels:
+                - "traefik.port=8080"
+                - "traefik.backend=wordpress"
+                - "traefik.protocol=http"
+                - "traefik.docker.network=citrus"
+                - "traefik.frontend.passHostHeader=true"
+                - "traefik.frontend.rule=Host:www.citruspeardinners.localhost"
+                - "traefik.frontend.entryPoints=http,https"
+                - "traefik.frontend.redirect.entryPoint=https"
+                - "traefik.enable=true"
+
+    redis-citrus:
+        image: redis:alpine
+        restart: always
+        volumes: 
+            - redis-citrus:/data
+        networks:
+            - citrus
+        ports:
+            - 6379:6379
+
+    # backup:
+    #     # image: registry.gitlab.com/citrus-pear/infrastructure/mysql-s3-backup-restore:latest
+    #     image: mysql-s3-backup-restor:latest
+    #     restart: always
+    #     networks:
+    #         - citrus
+    #     environment:
+    #         WORDPRESS_DB_HOST: mysql
+    #         CRON_TIME: "0 5 * * *"
+    #         S3_HOST: https://minio.cjtech.co
+    #         S3_BUCKET_NAME: test.backup-citrus-woo
+    #         AWS_ACCESS_KEY_ID: HtxVGRk7BEwBG1p37Lnp
+    #         AWS_SECRET_ACCESS_KEY: wKiLMO3VThb40pdTXM5clR4SQzFJvWPl
+    #         AWS_DEFAULT_REGION: us-east-1
+    #         INIT_BACKUP: "1"
+    #         MAX_BACKUPS: "5"
+    #         MYSQL_HOST: mysql
+    #         MYSQL_PORT: "3306"
+    #         MYSQL_USER: example
+    #         MYSQL_PASS: example
+
+    mc:
+        image: minio/mc
+        networks:
+            - citrus
+        restart: always
+        volumes:
+            - ./data/.mc:~/mc
+
+    adminer:
+        build:
+            context: ./.
+            dockerfile: Dockerfile-adminer
+        image: adminer:biggerUpload
+        networks:
+            - citrus
+        restart: always
+        depends_on:
+            - db_post
+        ports:
+            - 8888:8080
+
+    redis_commander:
+        image: rediscommander/redis-commander
+        environment:
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+        networks:
+            - citrus
+        ports:
+            - "8282:8081"
+        restart: always
+
+    traefik-citrus:
+        image: traefik:1.7
+        command: 
+            - "--entryPoints=Name:http Address::80 Compress:true" 
+            - "--entryPoints=Name:https Address::443 TLS Compress:true"
+            - "--api"
+            - "--docker" 
+            - "--docker.watch"
+            - "--docker.swarmmode" 
+            - "--loglevel=debug"
+
+        networks:
+            - citrus
+        ports:
+            - "80:80"
+            - "443:443"
+            - "8080:8080" #The Web UI (enabled by --api)
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock #So that Traefik can listen to the Docker events
+            # - ./traefik.toml:/traefik.toml
+            # - ./acme.json:/acme.json
+
+networks:
+    citrus:
+        external: true
+
+volumes:
+    redis-citrus:
+        external: true
