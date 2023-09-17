@@ -1,21 +1,35 @@
 const {
   graphql: { GraphQLString },
 } = require("sigue");
+const {db} = require('../sequelize');
+
+const {pullFromQueue, removeFromQueue} = require('./redis-queue');
+const queue = 'reservations';
 
 const query = {
-  hello: {
+  getNext: {
     type: GraphQLString,
-    resolve() {
-      return "world";
+    async resolve() {
+      const id = await pullFromQueue({queue});
+      return id;
     },
   },
 };
 
 const mutation = {
-  goodbye: {
+  complete: {
     type: GraphQLString,
-    resolve() {
-      return "world";
+    args: {
+      id: {
+        type: GraphQLString,
+      },
+    },
+    async resolve(parent, args, contextValue, info) {
+      const id = args.id;
+      console.log('complete', id);
+      await removeFromQueue({id, queue});
+      await db.sequelize.models.Reservation.destroy({where: {id}});
+      return id;
     },
   },
 };

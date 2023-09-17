@@ -1,15 +1,8 @@
-const { schema: schemaGenerator, getModels } = require("sigue");
-const env = process.env.NODE_ENV || "development";
+const { schema: schemaGenerator } = require("sigue");
 const { createServer, startServer } = require("./src/server.js");
 const { query, mutation } = require("./src/graphQLschema.js");
 const { pubsub } = require("./src/redis-subscriptions.js");
-
-// Set up the database
-const db = getModels({
-  db_url: process.env.DATABASE_URL || require("./config/config")[env]?.url,
-  config: require("./config/config")[env],
-  modelsDirectory: __dirname + "/models",
-});
+const { db } = require('./sequelize');
 
 // Sync the database tables
 db.sequelize.sync().then(() => {
